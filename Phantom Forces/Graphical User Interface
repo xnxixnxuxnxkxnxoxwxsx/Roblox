@@ -1,0 +1,276 @@
+local rs = game:GetService("RunService")
+local uis = game:GetService("UserInputService")
+
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xnxixnxuxnxkxnxoxwxsx/Roblox/main/Phantom%20Forces/Sources%20Code"))()
+local Window = Library.CreateLib("Phantom Forces: Pacific Cold Front Pt.2", "Synapse")
+
+local AimbotTab = Window:NewTab("ninunknows.木")
+
+local AimbotTab = Window:NewTab("ล็อคเป้า")
+local AimbotSection = AimbotTab:NewSection("ล็อคเป้า")
+
+local EspTab = Window:NewTab("แฮ็คมองทะลุ")
+local EspSection = EspTab:NewSection("แฮ็คมองทะลุ")
+
+local ExperimentalTab = Window:NewTab("เป้าเงียบ")
+local SASection = ExperimentalTab:NewSection("เป้าเงียบ")
+
+local BindsTab = Window:NewTab("ตั้งคีย์")
+local BindsSection = BindsTab:NewSection("ตั้งคีย์")
+
+local ColorTab = Window:NewTab("สีของแฮ็คมอง")
+local ColorSection = ColorTab:NewSection("สีของแฮ็คมอง")
+
+
+
+
+
+local AbColor = Color3.fromRGB(0, 0, 0)
+local EspColor = Color3.fromRGB(0, 0, 0)
+
+ColorSection:NewColorPicker("สีของขนาดมุมมองล็อคเป้า", "", Color3.fromRGB(0,0,0), function(color)
+    AbColor = color
+end)
+
+ColorSection:NewColorPicker("สีของแฮ็คมองทะลุ", "", Color3.fromRGB(0,0,0), function(color)
+    EspColor = color
+end)
+
+
+local function getTeam()
+    local localPlayerGhostsTeamName = "Ghosts"
+    local playerFolderGhostsTeamName = "Bright orange"
+    local playerFolderPhantomsTeamName = "Bright blue"
+    
+    if game.Players.LocalPlayer.Team.Name == localPlayerGhostsTeamName then return playerFolderPhantomsTeamName else return playerFolderGhostsTeamName end
+end
+
+local smoothing = 1
+local fov = 500
+local wallCheck = false
+local maxWalls = 0
+local abTargetPart = "Head"
+local FOVringList = {}
+
+local function isPointVisible(targetForWallCheck, mw)
+    local castPoints = {targetForWallCheck.PrimaryPart.Position}
+    local ignoreList = {targetForWallCheck, game.Players.LocalPlayer.Character, game.Workspace.CurrentCamera}
+    local result = workspace.CurrentCamera:GetPartsObscuringTarget(castPoints, ignoreList)
+    
+    return #result <= mw
+end
+
+AimbotSection:NewToggle("เปิด/ปิด", "", function(state)
+    if state then
+        FOVringList = {}
+        abLoop = rs.RenderStepped:Connect(function()
+            for i,v in pairs(FOVringList) do
+                v:Remove()
+            end
+            
+            FOVringList = {}
+            
+            local FOVring = Drawing.new("Circle")
+            FOVring.Visible = true
+            FOVring.Thickness = 2
+            FOVring.Radius = fov / workspace.CurrentCamera.FieldOfView
+            FOVring.Transparency = 1
+            FOVring.Color = AbColor
+            FOVring.Position = game.Workspace.CurrentCamera.ViewportSize/2
+            
+            FOVringList[#FOVringList+1] = FOVring
+            
+            local team = getTeam()
+            
+            local target = Vector2.new(math.huge, math.huge)
+            local targetPos
+            local targetPlayer
+            if game.Workspace.Players:FindFirstChild(team) then
+                for i,v in pairs(game.Workspace.Players:FindFirstChild(team):GetChildren()) do
+                    local pos = v[abTargetPart].Position
+                    local ScreenSpacePos, IsOnScreen = game.Workspace.CurrentCamera:WorldToViewportPoint(pos)
+                    ScreenSpacePos = Vector2.new(ScreenSpacePos.X, ScreenSpacePos.Y) - game.Workspace.CurrentCamera.ViewportSize/2
+                    
+                    if IsOnScreen and ScreenSpacePos.Magnitude < target.Magnitude and (isPointVisible(v, maxWalls) or not wallCheck) then
+                        target = ScreenSpacePos
+                        targetPos = pos
+                        targetPlayer = v
+                    end
+                end
+            end
+            
+            if target.Magnitude <= fov / workspace.CurrentCamera.FieldOfView and uis:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+                if target ~= Vector2.new(math.huge, math.huge) then
+                    mousemoverel(target.X/smoothing, target.Y/smoothing)
+                end
+            end
+        end)
+    else
+        abLoop:Disconnect()
+        for i,v in pairs(FOVringList) do
+            v:Remove()
+        end
+    end
+end)
+AimbotSection:NewToggle("ปิดล็อคล็อคเป้าทะลุ", "", function(state) wallCheck = state end)
+AimbotSection:NewSlider("ขนาดมุมมองล็อคเป้า", "", 50000, 500, function(s) fov = s end)
+AimbotSection:NewSlider("ความสมูทของล็อคเป้า", "", 300, 100, function(s) smoothing = s/100 end)
+AimbotSection:NewDropdown("เลือกล็อคส่วนไหนของตัว", "", {"Head"}, function(currentOption) abTargetPart = currentOption end)
+
+
+
+
+
+local saTargetPart = "Head"
+local safov = 500
+local panicMode = false
+local panicDistance = 5
+local saWallCheck = false
+local saWallBangs = 0
+local gunCF
+local motor
+local sa = false
+local saFovRingList = {}
+
+saLoop = rs.RenderStepped:Connect(function()
+    for i,v in pairs(saFovRingList) do
+        v:Remove()
+    end
+      
+    saFovRingList = {}
+    if not sa then return end        
+    local FOVring = Drawing.new("Circle")
+    FOVring.Visible = true
+    FOVring.Thickness = 2
+    FOVring.Radius = safov / workspace.CurrentCamera.FieldOfView
+    FOVring.Transparency = 1
+    FOVring.Color = AbColor
+    FOVring.Position = game.Workspace.CurrentCamera.ViewportSize/2
+            
+    saFovRingList[#saFovRingList+1] = FOVring
+    
+    local team = getTeam()
+    
+    local targetPos
+    local last = Vector2.new(math.huge, math.huge)
+    if game.Workspace.Players:FindFirstChild(team) then
+        for i,v in pairs(game.Workspace.Players:FindFirstChild(team):GetChildren()) do
+            local pos = v[saTargetPart].Position
+            local ScreenSpacePos, IsOnScreen = game.Workspace.CurrentCamera:WorldToViewportPoint(pos)
+            ScreenSpacePos = Vector2.new(ScreenSpacePos.X, ScreenSpacePos.Y) - game.Workspace.CurrentCamera.ViewportSize/2
+            
+            if (v[saTargetPart].Position - Workspace.CurrentCamera.CFrame.Position).Magnitude <= panicDistance and panicMode then
+                targetPos = pos
+                break
+            end
+                    
+            if IsOnScreen and ScreenSpacePos.Magnitude < last.Magnitude and ScreenSpacePos.Magnitude <= (safov / workspace.CurrentCamera.FieldOfView) and (isPointVisible(v, saWallBangs) or not saWallCheck) then
+                last = ScreenSpacePos
+                targetPos = pos
+            end
+        end
+    end
+    if targetPos then
+        motor = Workspace.CurrentCamera:GetChildren()[3].Trigger.Motor6D
+        local cf = motor.C0
+                
+        local cf2 = CFrame.new(motor.Part0.CFrame:ToWorldSpace(cf).Position, targetPos)
+        gunCF = motor.Part0.CFrame:ToObjectSpace(cf2)
+    else
+        gunCF = nil
+        motor = nil
+    end
+end)
+local OldIndex
+OldIndex = hookmetamethod(game, "__newindex", newcclosure(function(...)
+    local Self, Key, Value = ...
+
+    if sa and motor and gunCF and Self == motor and Key == "C0" then
+        return OldIndex(Self, Key, gunCF)
+    end
+
+    return OldIndex(...)
+end))
+
+SASection:NewToggle("เปิด/ปิด", "", function(state)
+    sa = state
+end)
+
+
+
+
+
+
+
+local LineList = {}
+local width = 3
+local height = 5
+
+EspSection:NewToggle("เปิด/ปิด", "", function(state)
+    if state then
+        LineList = {}
+        espLoop = rs.RenderStepped:Connect(function()
+            for i,v in pairs(LineList) do
+                if v then
+                    v:Remove()
+                end
+            end
+            
+            local team = getTeam()
+
+            LineList = {}
+            if game.Workspace.Players:FindFirstChild(team) then
+                for i,v in pairs(game.Workspace.Players:FindFirstChild(team):GetChildren()) do
+                    local pos = v.PrimaryPart.Position
+                    local ScreenSpacePos, IsOnScreen = game.Workspace.CurrentCamera:WorldToViewportPoint(pos)
+                    
+                    a = game.Workspace.CurrentCamera:WorldToViewportPoint(v.Torso.CFrame:PointToWorldSpace(Vector3.new(width/2, height/2, 0)))
+                    b = game.Workspace.CurrentCamera:WorldToViewportPoint(v.Torso.CFrame:PointToWorldSpace(Vector3.new(-width/2, height/2, 0)))
+                    c = game.Workspace.CurrentCamera:WorldToViewportPoint(v.Torso.CFrame:PointToWorldSpace(Vector3.new(-width/2, -height/2, 0)))
+                    d = game.Workspace.CurrentCamera:WorldToViewportPoint(v.Torso.CFrame:PointToWorldSpace(Vector3.new(width/2, -height/2, 0)))
+                    
+                    a = Vector2.new(a.X, a.Y)
+                    b = Vector2.new(b.X, b.Y)
+                    c = Vector2.new(c.X, c.Y)
+                    d = Vector2.new(d.X, d.Y)
+                    
+                    if IsOnScreen then
+                        local Line = Drawing.new("Quad")
+                        Line.Visible = true
+                        Line.PointA = a
+                        Line.PointB = b
+                        Line.PointC = c
+                        Line.PointD = d
+                        Line.Color = EspColor
+                        Line.Thickness = 2
+                        Line.Transparency = 1
+                        
+                        LineList[#LineList+1] = Line
+                    end
+                end
+            end
+        end)
+    else
+        espLoop:Disconnect()
+        for i,v in pairs(LineList) do
+            v:Remove()
+        end
+        LineList = {}
+    end
+end)
+
+
+
+
+
+
+
+
+
+
+
+
+
+BindsSection:NewKeybind("กดเพื่อตั้งค่าปุ่มคีย์", "", Enum.KeyCode.E, function()
+	Library:ToggleUI()
+end)
