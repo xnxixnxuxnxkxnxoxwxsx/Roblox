@@ -2,7 +2,7 @@ local rs = game:GetService("RunService")
 local uis = game:GetService("UserInputService")
 
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xnxixnxuxnxkxnxoxwxsx/Roblox/main/Phantom%20Forces/Sources%20Code"))()
-local Window = Library.CreateLib("Phantom Forces: Pacific Cold Front Pt.2", "Synapse")
+local Window = Library.CreateLib("Phantom Forces: Pacific Cold Front Pt.2", "BloodTheme")
 
 local AimbotTab = Window:NewTab("ninunknows.木")
 
